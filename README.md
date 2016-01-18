@@ -1,5 +1,5 @@
 # GBTPlotTool
 Plot GBT Maps
-#Usage
+##Usage
 python -m GBTPlotTool
 
