@@ -7,6 +7,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import gc
 import plotGBTMap as gPlot
 import sys
+import matplotlib.animation as manimation
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return array[idx]
@@ -33,41 +34,58 @@ class GUI:
    def setUp(self):
       self.master.protocol('WM_DELETE_WINDOW', self.close)
       self.master.wm_title("GBT Map Plot Machine")
+      ##Define the control pannel##
       stepOne = tk.LabelFrame(self.master, text=" Control: ")
       stepOne.grid(row=0, column=0, columnspan=95, sticky='WN', \
                    padx=5, pady=5, ipadx=5, ipady=5)
+      ##OpenFile
       inFileLbl = tk.Label(stepOne, text="Select the File:")
-      inFileLbl.grid(row=0, column=0, sticky='E', padx=5, pady=2)
+      inFileLbl.grid(row=0, column=0, sticky='W', padx=5, pady=2)
       self.inFileTxt = tk.Entry(stepOne)
       self.inFileTxt.grid(row=0, column=1, columnspan=7, sticky="WE", pady=3)
       self.inFileTxt.insert(0,"/home/chto/Desktop/NewProject3/VictorNewMap/fir_1hr_80-68_newpol_clean_map_I_800.npy")
       inFileBtn = tk.Button(stepOne, text="Browse ...",command=self.askopenfile)
       inFileBtn.grid(row=0, column=8, sticky='W', padx=5, pady=2)
-      
       self.inFileTxt.bind("<Return>", self.EnterFileEvent)
+      ###PlotButton
       plotBtn = tk.Button(stepOne, text="Plot",command=self.plotButton)
       plotBtn.grid(row=3, column=0, sticky='W', padx=5, pady=2)
+      ###Save Button##
+      self.outMovieTxt = tk.Entry(stepOne)
+      self.outMovieTxt.grid(row=3, column=1, columnspan=7, sticky="WE", pady=3)
+      self.outMovieTxt.insert(0,"./GBTPlotTool/Movie_Test/test.mp4")
+      saveMovieBtn = tk.Button(stepOne, text="saveMov",command=self.plotSaveMov)
+      saveMovieBtn.grid(row=3, column=8, sticky='W', padx=5, pady=2)
+
+      self.outFreqTxt = tk.Entry(stepOne)
+      self.outFreqTxt.grid(row=3, column=9, columnspan=7, sticky="WE", pady=3)
+      self.outFreqTxt.insert(0,"./GBTPlotTool/Movie_Test/test.png")
+      saveFreqBtn = tk.Button(stepOne, text="saveFreq",command=self.plotSaveFig)
+      saveFreqBtn.grid(row=3, column=16, sticky='W', padx=5, pady=2)
+
+
+      ###Freq
       freq_TxtLabel=tk.Label(stepOne, text="Freq:")
       freq_TxtLabel.grid(row=4, column=0, sticky='W', padx=5, pady=2)
       self.freq_Txt = tk.Entry(stepOne,width=5)
       self.freq_Txt.grid(row=4, column=0, columnspan=5, sticky="W", pady=3,padx=50)
       self.freq_Txt.insert(0,"0")
+      ###Freq Button###
       IncrFreqBtn = tk.Button(stepOne, text=">>",command=self.IncFreq)
       IncrFreqBtn.grid(row=4, column=1, sticky='W', padx=50, pady=2)
       DecFreqBtn = tk.Button(stepOne, text="<<",command=self.DecFreq)
       DecFreqBtn.grid(row=4, column=1, sticky='W', padx=0, pady=2)
+      ###Plot Pannel###
       stepTwo = tk.LabelFrame(self.master, text=" Plot: ", width=600, height=500)
       stepTwo.grid(row=0, column=95,columnspan=70,rowspan=10 ,sticky='NW', \
                    padx=5, pady=10, ipadx=5, ipady=5)
+      ##Freq Plot Pannel###
       stepThree = tk.LabelFrame(self.master, text=" Freq Plot: ", width=700, height=450)
       stepThree.grid(row=0, column=0,columnspan=60,rowspan=20 ,sticky='WN', \
                    padx=5, pady=180, ipadx=5, ipady=0)
-#      FigLabel = tk.Label(stepTwo, text="Figure will come. Please click plot")
-#      FigLabel.grid(row=0)
       
       self.freq_Txt.bind("<Return>", self.EnterEvent)
-
-
+      ####PLot Range##########
       vMax_TxtLabel=tk.Label(stepOne, text="Vmax:")
       vMax_TxtLabel.grid(row=5, column=0, sticky='W', padx=5, pady=2)
       self.vMax_Txt = tk.Entry(stepOne,width=5)
@@ -208,4 +226,42 @@ class GUI:
             self.inFileTxt.delete(0,'end')
             self.inFileTxt.insert(0,AskReturn.name)
         return AskReturn
+   def plotSaveMov(self):
+      AskReturn=tkFileDialog.asksaveasfile()
+      if AskReturn!=None:
+         self.outMovieTxt.delete(0,'end')
+         self.outMovieTxt.insert(0,AskReturn.name)
+         try:
+            self.plotMovie(self.outMovieTxt.get())
+         except:
+            None
+      return AskReturn
+   def plotSaveFig(self):
+      AskReturn=tkFileDialog.asksaveasfile()
+      if AskReturn!=None:
+         self.outFreqTxt.delete(0,'end')
+         self.outFreqTxt.insert(0,AskReturn.name)
+         try:
+            self.fig_Freq.savefig(self.outFreqTxt.get())
+         except:
+            None
+      return AskReturn
 
+   def plotMovie(self,name):
+      window = tk.Toplevel(self.master)
+      FFMpegWriter = manimation.writers['ffmpeg']
+      fig = plt.figure()
+      writer = FFMpegWriter(fps=3)
+      with writer.saving(fig, name, 100):
+         for i in xrange(self.data.shape[0]):
+            print i
+            ax=gPlot.plotKiyoMap(self.data,self.metaDic,fig,i,eval(self.vMax_Txt.get()),eval(self.vMin_Txt.get()))
+            writer.grab_frame()
+            plt.clf()
+      plt.close(fig)
+      fig.clf()
+
+                
+
+
+          
