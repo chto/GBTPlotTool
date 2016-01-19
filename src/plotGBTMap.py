@@ -1,10 +1,10 @@
 import numpy as np
 from matplotlib import pyplot as plt
 def findCoordinate(iX,iY,Dict,shape):
-  print iX,iY,Dict,shape
+#  print iX,iY,Dict,shape
   xx=round((iX-Dict['dec_centre'])/Dict['dec_delta']+shape[2]/2)
   yy=round((iY-Dict['ra_centre'])/Dict['ra_delta']+shape[1]/2)
-  print xx,yy
+#  print xx,yy
   return xx,yy 
 def plotKiyoMap(data,Dict,fig,freq,vmax,vmin):
    """ 
@@ -31,6 +31,7 @@ def plotKiyoMap(data,Dict,fig,freq,vmax,vmin):
               origin='lowerright',vmax=vmax,vmin=vmin)
    ax.set_title("Freq=%s"%repr(freq))
    cb = fig.colorbar(ax1)
+   cb.set_label('T(K)')
    ax.set_ylabel("RA (deg)")
    ax.set_xlabel("DEC (deg)")
    ax.autoscale(enable=False)

@@ -8,6 +8,9 @@ import gc
 import plotGBTMap as gPlot
 import sys
 import matplotlib.animation as manimation
+import Queue
+import threading
+import time 
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return array[idx]
@@ -53,13 +56,13 @@ class GUI:
       ###Save Button##
       self.outMovieTxt = tk.Entry(stepOne)
       self.outMovieTxt.grid(row=3, column=1, columnspan=7, sticky="WE", pady=3)
-      self.outMovieTxt.insert(0,"./GBTPlotTool/Movie_Test/test.mp4")
+      self.outMovieTxt.insert(0,"./GBTPlotTool/Movie_Test/")
       saveMovieBtn = tk.Button(stepOne, text="saveMov",command=self.plotSaveMov)
       saveMovieBtn.grid(row=3, column=8, sticky='W', padx=5, pady=2)
 
       self.outFreqTxt = tk.Entry(stepOne)
       self.outFreqTxt.grid(row=3, column=9, columnspan=7, sticky="WE", pady=3)
-      self.outFreqTxt.insert(0,"./GBTPlotTool/Movie_Test/test.png")
+      self.outFreqTxt.insert(0,"./GBTPlotTool/Movie_Test/")
       saveFreqBtn = tk.Button(stepOne, text="saveFreq",command=self.plotSaveFig)
       saveFreqBtn.grid(row=3, column=16, sticky='W', padx=5, pady=2)
 
@@ -100,7 +103,9 @@ class GUI:
       self.vMax_Txt.bind("<Return>", self.EnterEvent)
 
    def close(self):
+      self.master.quit()
       self.master.destroy()
+      print "Thanks for using it. Have a nice day :)\n"
    def DecFreq(self):
       freq=self.freq_Txt.get()
       self.freq_Txt.delete(0,"end")
@@ -126,7 +131,7 @@ class GUI:
          self.fig.clf()
          plt.close(self.fig)
       except:
-         None
+         pass
       try:
          freq=eval(self.freq_Txt.get())
       except:
@@ -147,10 +152,12 @@ class GUI:
          self.fig_Freq.clf()
          plt.close(self.fig_Freq)
       except:
-         None
+         pass
       ax=self.fig_Freq.add_subplot(1,1,1)
       self.line,=ax.plot(self.data[:,yy,xx])
       ax.set_title("RA=%s,Dec=%s"%(repr(yy),repr(xx)))
+      ax.set_xlabel(r"Freq(channel)")
+      ax.set_ylabel(r"T(K)")
 
       if self.Num_Freq==0:
          self.addFigure(self.fig_Freq,2)
@@ -161,7 +168,7 @@ class GUI:
        try:
          ix, iy = gPlot.findCoordinate(event2.xdata,event2.ydata,\
                                        self.metaDic,self.data.shape)
-         print ix,iy 
+#         print ix,iy 
          self.plotFreqFigure(ix,iy)
          if self.mark:
             try:
@@ -227,7 +234,15 @@ class GUI:
             self.inFileTxt.insert(0,AskReturn.name)
         return AskReturn
    def plotSaveMov(self):
-      AskReturn=tkFileDialog.asksaveasfile()
+      string=self.outMovieTxt.get()
+      if string:
+         AskReturn=tkFileDialog.asksaveasfile(initialdir=string,\
+         filetypes=[('Movie files', '*.mp4'),
+                    ('All files', '*'),
+                   ]
+         )
+      else:
+         AskReturn=tkFileDialog.asksaveasfile()
       if AskReturn!=None:
          self.outMovieTxt.delete(0,'end')
          self.outMovieTxt.insert(0,AskReturn.name)
@@ -237,7 +252,15 @@ class GUI:
             None
       return AskReturn
    def plotSaveFig(self):
-      AskReturn=tkFileDialog.asksaveasfile()
+      string=self.outFreqTxt.get()
+      if string:
+         AskReturn=tkFileDialog.asksaveasfile(initialdir=string,\
+         filetypes=[('figure file', '*.png'),
+                    ('All files', '*'),
+                   ]
+         )
+      else:
+         AskReturn=tkFileDialog.asksaveasfile()
       if AskReturn!=None:
          self.outFreqTxt.delete(0,'end')
          self.outFreqTxt.insert(0,AskReturn.name)
@@ -248,20 +271,53 @@ class GUI:
       return AskReturn
 
    def plotMovie(self,name):
+      queue=Queue.Queue()
       window = tk.Toplevel(self.master)
       FFMpegWriter = manimation.writers['ffmpeg']
       fig = plt.figure()
       writer = FFMpegWriter(fps=3)
-      with writer.saving(fig, name, 100):
-         for i in xrange(self.data.shape[0]):
-            print i
-            ax=gPlot.plotKiyoMap(self.data,self.metaDic,fig,i,eval(self.vMax_Txt.get()),eval(self.vMin_Txt.get()))
-            writer.grab_frame()
-            plt.clf()
+      break_tag=[False]
+      def checkqueue(window):
+         while queue.qsize():
+            try:
+               msg = queue.get(0)
+               inFileLbl = tk.Label(window,\
+                           text=" Running...\nFrequency=%s"%repr(msg))
+               inFileLbl.grid(row=0, column=0, sticky='W', padx=5, pady=2)
+            except Queue.Empty:
+               pass
+      def call():
+         with writer.saving(fig, name, 100):
+            for i in xrange(self.data.shape[0]):
+               if break_tag[0]:
+                  break
+               queue.put(i)
+               ax=gPlot.plotKiyoMap(self.data,self.metaDic,fig,i,eval(self.vMax_Txt.get()),eval(self.vMin_Txt.get()))
+               writer.grab_frame()
+               plt.clf()
+      def on_closing():
+         break_tag[0]=True
+         window.destroy()
+      window.protocol("WM_DELETE_WINDOW", on_closing)
+      thread = threading.Thread(target=call)
+      thread.start()
+      while thread.is_alive():
+         checkqueue(window)
+         window.update()
+         time.sleep(0.001)
+      window.destroy()
       plt.close(fig)
       fig.clf()
+      return
 
-                
+
+
+          
+         
+         
+
+
+      
 
 
           
